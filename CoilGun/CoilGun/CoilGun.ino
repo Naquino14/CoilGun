@@ -7,7 +7,7 @@ const int resetPin = 8;
 int flashDelay = 100;
 
 float sensorValue;
-float onTime = 500; // coil on time
+float onTime = 1000; // coil on time
 
 enum CurrentMode{
   idle,
@@ -31,21 +31,21 @@ void setup() {
   pinMode(safetyIndicator, OUTPUT);
   pinMode(safetySwitch, OUTPUT);
   pinMode(fireSignal, INPUT);
-  pinMode(resetPin, OUTPUT);
   currentMode = safe;
   
 }
 
 void loop() {
   HandleSafety();
-  if (CheckFire()){
+  if (CheckFire() == false){
     digitalWrite(safetySwitch, LOW);
     resetFO = true;
     delay(200);
   }
 
-  if (resetFO){
-    digitalWrite(resetPin, HIGH);
+  if (resetFO && digitalRead(safetyButton) == LOW){
+    pinMode(resetPin, OUTPUT);
+    
   }
 }
 
@@ -70,6 +70,8 @@ bool CheckFire() {
   if (digitalRead(fireSignal) == HIGH){
     delay(onTime);
     return true;
+  } else {
+    return false;
   }
 }
 
