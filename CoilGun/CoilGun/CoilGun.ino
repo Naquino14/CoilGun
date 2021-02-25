@@ -6,6 +6,31 @@ const int fireSignal = 7;
 const int resetPin = 8;
 int flashDelay = 100;
 
+// read lipo battery voltage
+const int bp1 = A0;
+const int bp2 = A1;
+const int bp3 = A2;
+
+int bp1Val;
+int bp2Val;
+int bp3Val;
+
+// read external battery voltage (for now, i dont wanna use a bec)
+const int exbp = A3;
+int exbpVal;
+
+
+/// finding ratios for lipo:
+/// volt  :  analog
+///  5    :   1024
+/// divide by 1.19047619
+/// 4.2max: ~860.16
+///
+///  5    :   1024
+/// divide by 1.5625
+/// 3.2min:  655.36
+// map for 655.36, 860.16
+
 float sensorValue;
 float onTime = 1000; // coil on time
 
@@ -36,6 +61,12 @@ void setup() {
 }
 
 void loop() {
+  // voltage readouts
+  
+  CheckVoltage();
+  SerialPrintVoltage();
+  
+  // gun stuff
   HandleSafety();
   if (CheckFire() == false){
     digitalWrite(safetySwitch, LOW);
@@ -64,6 +95,35 @@ void HandleSafety() {
     
     Flash(false);
   }
+}
+
+void CheckVoltage(){
+  bp1Val = analogRead(bp1);
+  bp1Val = map(bp1Val, 0, 1023, 655, 860);
+  
+  bp2Val = analogRead(bp2);
+  bp2Val = map(bp2Val, 0, 1023, 655, 860);
+
+  bp3Val = analogRead(bp3);
+  bp3Val = map(bp3Val, 0, 1023, 655, 860);
+  
+  exbpVal = analogRead(exbp);
+}
+
+void SerialPrintVoltage(){
+  Serial.println("//////");
+  
+  Serial.print("S1: ");
+  Serial.println(bp1Val);
+
+  Serial.print("S2: ");
+  Serial.println(bp2Val);
+
+  Serial.print("S3: ");
+  Serial.println(bp3Val);
+
+  Serial.print("XS: ");
+  Serial.println(exbpVal);
 }
 
 bool CheckFire() {
