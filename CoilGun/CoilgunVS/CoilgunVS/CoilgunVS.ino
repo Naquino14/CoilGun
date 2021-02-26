@@ -8,6 +8,10 @@ const int fireSignal = 7;
 const int resetPin = 8;
 int flashDelay = 100;
 
+const int hiBatInd = 9;
+const int mdBatInd = 10;
+const int loBatInd = 11;
+
 // read lipo battery voltage
 const int bp1 = A0;
 const int bp2 = A1;
@@ -42,12 +46,19 @@ enum CurrentMode {
     hot
 };
 
-CurrentMode currentMode = idle;
+enum VoltageLevel {
+    hi,
+    md,
+    lo
+};
 
+CurrentMode currentMode = idle;
+VoltageLevel voltageLevel = hi;
 
 bool safetyToggle = false;
 bool flashFO = true;
 bool resetFO = false;
+bool thresholdFO = true;
 
 bool fired = false;
 
@@ -59,6 +70,9 @@ void setup() {
     pinMode(safetyIndicator, OUTPUT);
     pinMode(safetySwitch, OUTPUT);
     pinMode(fireSignal, INPUT);
+    pinMode(hiBatInd, OUTPUT);
+    pinMode(mdBatInd, OUTPUT);
+    pinMode(loBatInd, OUTPUT);
     currentMode = safe;
 
 }
@@ -68,6 +82,8 @@ void loop() {
 
     CheckVoltage();
     SerialPrintVoltage();
+
+    CheckThreshold();
 
     // gun stuff
     HandleSafety();
@@ -127,6 +143,40 @@ void SerialPrintVoltage() {
 
     Serial.print("XS: ");
     Serial.println(exbpVal);
+}
+
+void CheckThreshold() {
+    int _val = min(bp1Val, min(bp2Val, bp3Val));
+    if (_val > 685) {
+        voltageLevel = hi;
+        DisplayVoltage(voltageLevel);
+    }
+    else if (_val > 342) {
+        voltageLevel = md;
+        DisplayVoltage(voltageLevel);
+    }
+    else {
+        voltageLevel = lo;
+        DisplayVoltage(voltageLevel);
+    }
+}
+
+void DisplayVoltage(VoltageLevel voltageLevel) {
+    if (voltageLevel == hi) {
+        digitalWrite(hiBatInd, HIGH);
+        digitalWrite(mdBatInd, LOW);
+        digitalWrite(loBatInd, LOW);
+    }
+    if (voltageLevel == md) {
+        digitalWrite(hiBatInd, LOW);
+        digitalWrite(mdBatInd, HIGH);
+        digitalWrite(loBatInd, LOW);
+    }
+    if (voltageLevel == lo) {
+        digitalWrite(hiBatInd, LOW);
+        digitalWrite(mdBatInd, LOW);
+        digitalWrite(loBatInd, HIGH);
+    }
 }
 
 bool CheckFire() {
