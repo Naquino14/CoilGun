@@ -1,3 +1,5 @@
+#pragma region variables
+
 const int diodePin = A0;
 const int safetyButton = 4;
 const int safetyIndicator = 5;
@@ -5,6 +7,10 @@ const int safetySwitch = 6;
 const int fireSignal = 7;
 const int resetPin = 8;
 int flashDelay = 100;
+
+const int hiBatInd = 9;
+const int mdBatInd = 10;
+const int loBatInd = 11;
 
 // read lipo battery voltage
 const int bp1 = A0;
@@ -32,130 +38,178 @@ int exbpVal;
 // map for 655.36, 860.16
 
 float sensorValue;
-float onTime = 1000; // coil on time
+float onTime = 2; // coil on time
 
-enum CurrentMode{
-  idle,
-  safe,
-  hot
+enum CurrentMode {
+    idle,
+    safe,
+    hot
+};
+
+enum VoltageLevel {
+    hi,
+    md,
+    lo
 };
 
 CurrentMode currentMode = idle;
-
+VoltageLevel voltageLevel = hi;
 
 bool safetyToggle = false;
 bool flashFO = true;
 bool resetFO = false;
+bool thresholdFO = true;
 
 bool fired = false;
 
+#pragma endregion
 
 void setup() {
-  Serial.begin(9600);
-  pinMode(safetyButton, INPUT_PULLUP);
-  pinMode(safetyIndicator, OUTPUT);
-  pinMode(safetySwitch, OUTPUT);
-  pinMode(fireSignal, INPUT);
-  currentMode = safe;
-  
+    Serial.begin(9600);
+    pinMode(safetyButton, INPUT_PULLUP);
+    pinMode(safetyIndicator, OUTPUT);
+    pinMode(safetySwitch, OUTPUT);
+    pinMode(fireSignal, INPUT);
+    pinMode(hiBatInd, OUTPUT);
+    pinMode(mdBatInd, OUTPUT);
+    pinMode(loBatInd, OUTPUT);
+    currentMode = safe;
+
 }
 
 void loop() {
-  // voltage readouts
-  
-  CheckVoltage();
-  SerialPrintVoltage();
-  
-  // gun stuff
-  HandleSafety();
-  if (CheckFire() == false){
-    digitalWrite(safetySwitch, LOW);
-    resetFO = true;
-    delay(200);
-  }
+    // voltage readouts
 
-  if (resetFO && digitalRead(safetyButton) == LOW){
-    pinMode(resetPin, OUTPUT);
-    
-  }
+    CheckVoltage();
+    SerialPrintVoltage();
+
+    CheckThreshold();
+
+    // gun stuff
+    HandleSafety();
+    if (CheckFire() == false) {
+        digitalWrite(safetySwitch, LOW);
+        resetFO = true;
+        delay(200);
+    }
+
+    if (resetFO && digitalRead(safetyButton) == LOW) {
+        pinMode(resetPin, OUTPUT);
+
+    }
 }
 
 void HandleSafety() {
-  if (!safetyToggle && digitalRead(safetyButton) == LOW){
-    currentMode = hot;
-    safetyToggle = true;
-    digitalWrite(safetySwitch, HIGH); //pnp
-    
-    Flash(true);
-  }
-  if (safetyToggle && digitalRead(safetyButton) == LOW){
-    currentMode = safe;
-    safetyToggle = false;
-    digitalWrite(safetySwitch, LOW);
-    
-    Flash(false);
-  }
+    if (!safetyToggle && digitalRead(safetyButton) == LOW) {
+        currentMode = hot;
+        safetyToggle = true;
+        digitalWrite(safetySwitch, HIGH); //pnp
+
+        Flash(true);
+    }
+    if (safetyToggle && digitalRead(safetyButton) == LOW) {
+        currentMode = safe;
+        safetyToggle = false;
+        digitalWrite(safetySwitch, LOW);
+
+        Flash(false);
+    }
 }
 
-void CheckVoltage(){
-  bp1Val = analogRead(bp1);
-  bp1Val = map(bp1Val, 0, 1023, 655, 860);
-  
-  bp2Val = analogRead(bp2);
-  bp2Val = map(bp2Val, 0, 1023, 655, 860);
+void CheckVoltage() {
+    bp1Val = analogRead(bp1);
+    bp1Val = map(bp1Val, 0, 1023, 655, 860);
 
-  bp3Val = analogRead(bp3);
-  bp3Val = map(bp3Val, 0, 1023, 655, 860);
-  
-  exbpVal = analogRead(exbp);
+    bp2Val = analogRead(bp2);
+    bp2Val = map(bp2Val, 0, 1023, 655, 860);
+
+    bp3Val = analogRead(bp3);
+    bp3Val = map(bp3Val, 0, 1023, 655, 860);
+
+    exbpVal = analogRead(exbp);
 }
 
-void SerialPrintVoltage(){
-  Serial.println("//////");
-  
-  Serial.print("S1: ");
-  Serial.println(bp1Val);
+void SerialPrintVoltage() {
+    Serial.println("//////");
 
-  Serial.print("S2: ");
-  Serial.println(bp2Val);
+    Serial.print("S1: ");
+    Serial.println(bp1Val);
 
-  Serial.print("S3: ");
-  Serial.println(bp3Val);
+    Serial.print("S2: ");
+    Serial.println(bp2Val);
 
-  Serial.print("XS: ");
-  Serial.println(exbpVal);
+    Serial.print("S3: ");
+    Serial.println(bp3Val);
+
+    Serial.print("XS: ");
+    Serial.println(exbpVal);
+}
+
+void CheckThreshold() {
+    int _val = min(bp1Val, min(bp2Val, bp3Val));
+    if (_val > 685) {
+        voltageLevel = hi;
+        DisplayVoltage(voltageLevel);
+    }
+    else if (_val > 342) {
+        voltageLevel = md;
+        DisplayVoltage(voltageLevel);
+    }
+    else {
+        voltageLevel = lo;
+        DisplayVoltage(voltageLevel);
+    }
+}
+
+void DisplayVoltage(VoltageLevel voltageLevel) {
+    if (voltageLevel == hi) {
+        digitalWrite(hiBatInd, HIGH);
+        digitalWrite(mdBatInd, LOW);
+        digitalWrite(loBatInd, LOW);
+    }
+    if (voltageLevel == md) {
+        digitalWrite(hiBatInd, LOW);
+        digitalWrite(mdBatInd, HIGH);
+        digitalWrite(loBatInd, LOW);
+    }
+    if (voltageLevel == lo) {
+        digitalWrite(hiBatInd, LOW);
+        digitalWrite(mdBatInd, LOW);
+        digitalWrite(loBatInd, HIGH);
+    }
 }
 
 bool CheckFire() {
-  if (digitalRead(fireSignal) == HIGH){
-    delay(onTime);
-    return true;
-  } else {
-    return false;
-  }
+    if (digitalRead(fireSignal) == HIGH) {
+        delay(onTime);
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 void Flash(bool hot) {
-  if (hot){
-  digitalWrite(safetyIndicator, HIGH);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, LOW);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, HIGH);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, LOW);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, HIGH);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, LOW);
-  delay(flashDelay);
-  digitalWrite(safetyIndicator, HIGH);
-  }
-  if (!hot){
-    digitalWrite(safetyIndicator, LOW);
-    delay(flashDelay);
-    digitalWrite(safetyIndicator, HIGH);
-    delay(flashDelay);
-    digitalWrite(safetyIndicator, LOW);
-  }
+    if (hot) {
+        digitalWrite(safetyIndicator, HIGH);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, LOW);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, HIGH);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, LOW);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, HIGH);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, LOW);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, HIGH);
+    }
+    if (!hot) {
+        digitalWrite(safetyIndicator, LOW);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, HIGH);
+        delay(flashDelay);
+        digitalWrite(safetyIndicator, LOW);
+    }
 }
