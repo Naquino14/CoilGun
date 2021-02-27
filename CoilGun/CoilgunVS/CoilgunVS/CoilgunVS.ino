@@ -38,7 +38,7 @@ int exbpVal;
 // map for 655.36, 860.16
 
 float sensorValue;
-float onTime = 1000; // coil on time
+float onTime = 2; // coil on time
 
 enum CurrentMode {
     idle,
