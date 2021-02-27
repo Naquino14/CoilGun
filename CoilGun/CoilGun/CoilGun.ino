@@ -38,7 +38,7 @@ int exbpVal;
 // map for 655.36, 860.16
 
 float sensorValue;
-float onTime = 2; // coil on time
+float onTime = 200; // coil on time
 
 enum CurrentMode {
     idle,
@@ -75,13 +75,15 @@ void setup() {
     pinMode(loBatInd, OUTPUT);
     currentMode = safe;
 
+    CheckVoltage();
+    CheckThreshold();
 }
 
 void loop() {
     // voltage readouts
 
     CheckVoltage();
-    SerialPrintVoltage();
+    //SerialPrintVoltage();
 
     CheckThreshold();
 
@@ -90,7 +92,7 @@ void loop() {
     if (CheckFire() == false) {
         digitalWrite(safetySwitch, LOW);
         resetFO = true;
-        delay(200);
+        //delay(200);
     }
 
     if (resetFO && digitalRead(safetyButton) == LOW) {
@@ -104,27 +106,29 @@ void HandleSafety() {
         currentMode = hot;
         safetyToggle = true;
         digitalWrite(safetySwitch, HIGH); //pnp
-
+        Serial.println("disabling safety...");
+        Serial.println("////////");
         Flash(true);
     }
     if (safetyToggle && digitalRead(safetyButton) == LOW) {
         currentMode = safe;
         safetyToggle = false;
         digitalWrite(safetySwitch, LOW);
-
+        Serial.println("enabling safety");
+        Serial.println("\\\\\\\\");
         Flash(false);
     }
 }
 
 void CheckVoltage() {
     bp1Val = analogRead(bp1);
-    bp1Val = map(bp1Val, 0, 1023, 655, 860);
+    bp1Val = map(bp1Val, 655, 860, 0, 1024);
 
     bp2Val = analogRead(bp2);
-    bp2Val = map(bp2Val, 0, 1023, 655, 860);
+    bp2Val = map(bp2Val, 655, 860, 0, 1024);
 
     bp3Val = analogRead(bp3);
-    bp3Val = map(bp3Val, 0, 1023, 655, 860);
+    bp3Val = map(bp3Val, 655, 860, 0, 1024);
 
     exbpVal = analogRead(exbp);
 }
