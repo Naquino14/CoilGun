@@ -1,10 +1,8 @@
-#pragma region variables
-
 const int diodePin = A0;
 const int safetyButton = 4;
 const int safetyIndicator = 5;
-const int safetySwitch = 6;
-const int fireSignal = 7;
+const int triggerSafety = 6;
+const int checkFire = 7;
 const int resetPin = 8;
 int flashDelay = 100;
 
@@ -62,14 +60,13 @@ bool thresholdFO = true;
 
 bool fired = false;
 
-#pragma endregion
 
 void setup() {
     Serial.begin(9600);
     pinMode(safetyButton, INPUT_PULLUP);
     pinMode(safetyIndicator, OUTPUT);
-    pinMode(safetySwitch, OUTPUT);
-    pinMode(fireSignal, INPUT);
+    pinMode(triggerSafety, OUTPUT);
+    pinMode(checkFire, INPUT);
     pinMode(hiBatInd, OUTPUT);
     pinMode(mdBatInd, OUTPUT);
     pinMode(loBatInd, OUTPUT);
@@ -89,14 +86,17 @@ void loop() {
 
     // gun stuff
     HandleSafety();
-    if (CheckFire() == false) {
-        digitalWrite(safetySwitch, LOW);
-        resetFO = true;
-        //delay(200);
-    }
 
+    //check fire here
+    if (CheckFire() && currentMode == hot){
+      delay(onTime);
+      digitalWrite(triggerSafety, LOW);
+      Flash(false);
+      resetFO = true;
+      
+    }
     if (resetFO && digitalRead(safetyButton) == LOW) {
-        pinMode(resetPin, OUTPUT);
+        pinMode(resetPin, OUTPUT); // not very fancy way of force resetting
 
     }
 }
@@ -105,7 +105,7 @@ void HandleSafety() {
     if (!safetyToggle && digitalRead(safetyButton) == LOW) {
         currentMode = hot;
         safetyToggle = true;
-        digitalWrite(safetySwitch, HIGH); //pnp
+        digitalWrite(triggerSafety, HIGH); //pnp
         Serial.println("disabling safety...");
         Serial.println("////////");
         Flash(true);
@@ -113,11 +113,20 @@ void HandleSafety() {
     if (safetyToggle && digitalRead(safetyButton) == LOW) {
         currentMode = safe;
         safetyToggle = false;
-        digitalWrite(safetySwitch, LOW);
+        digitalWrite(triggerSafety, LOW);
         Serial.println("enabling safety");
         Serial.println("\\\\\\\\");
         Flash(false);
     }
+}
+
+bool CheckFire(){
+  if (digitalRead(checkFire)){
+    return true;
+  }
+  else{
+    return false;
+  }
 }
 
 void CheckVoltage() {
@@ -180,16 +189,6 @@ void DisplayVoltage(VoltageLevel voltageLevel) {
         digitalWrite(hiBatInd, LOW);
         digitalWrite(mdBatInd, LOW);
         digitalWrite(loBatInd, HIGH);
-    }
-}
-
-bool CheckFire() {
-    if (digitalRead(fireSignal) == HIGH) {
-        delay(onTime);
-        return true;
-    }
-    else {
-        return false;
     }
 }
 
