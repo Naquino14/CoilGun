@@ -36,7 +36,7 @@ int exbpVal;
 // map for 655.36, 860.16
 
 float sensorValue;
-float onTime = 2000; // coil on time (ms)
+float onTime = 200; // coil on time (ms)
 
 enum CurrentMode {
     idle,
@@ -121,7 +121,7 @@ void HandleSafety() {
 }
 
 bool CheckFire(){
-  if (digitalRead(checkFire)){
+  if (digitalRead(checkFire) == LOW){
     return true;
   }
   else{
